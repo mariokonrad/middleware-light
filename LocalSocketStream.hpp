@@ -9,11 +9,11 @@ class LocalSocketStream : public Channel
 {
 		friend class LocalSocketStreamServer;
 	private:
-		int fd;
 		std::string path;
 		struct sockaddr_un addr;
 	private:
-		void init(int, const std::string &, struct sockaddr_un &);
+		virtual int init(int);
+		void init(const std::string &, struct sockaddr_un &);
 	public:
 		LocalSocketStream();
 		LocalSocketStream(const std::string &);

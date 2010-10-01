@@ -3,8 +3,7 @@
 #include <sys/socket.h>
 
 LocalSocketStreamServer::LocalSocketStreamServer(const std::string & path)
-	: fd(-1)
-	, path(path)
+	: path(path)
 {
 	addr.sun_family = AF_UNIX;
 	strncpy(addr.sun_path, path.c_str(), sizeof(addr.sun_path)-1);
@@ -41,14 +40,18 @@ int LocalSocketStreamServer::close()
 	return 0;
 }
 
-int LocalSocketStreamServer::accept(LocalSocketStream & client)
+int LocalSocketStreamServer::accept(Channel * ch)
 {
 	if (fd < 0) return -1;
+	if (!ch) return -1;
+	LocalSocketStream * lss = dynamic_cast<LocalSocketStream *>(ch);
+	if (!lss) return -1;
 	struct sockaddr_un addr;
 	socklen_t len = sizeof(addr);
 	int sock = ::accept(fd, reinterpret_cast<sockaddr *>(&addr), &len);
 	if (sock < 0) return -1;
-	client.init(sock, path, addr);
+	lss->init(sock);
+	lss->init(path, addr);
 	return 0;
 }
 

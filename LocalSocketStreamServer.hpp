@@ -1,15 +1,13 @@
 #ifndef __LOCALSOCKETSTREAMSERVER__HPP__
 #define __LOCALSOCKETSTREAMSERVER__HPP__
 
+#include <Server.hpp>
 #include <string>
 #include <sys/un.h>
 
-class LocalSocketStream;
-
-class LocalSocketStreamServer
+class LocalSocketStreamServer : public Server
 {
 	private:
-		int fd;
 		std::string path;
 		struct sockaddr_un addr;
 	public:
@@ -17,7 +15,7 @@ class LocalSocketStreamServer
 		virtual ~LocalSocketStreamServer();
 		virtual int open();
 		virtual int close();
-		int accept(LocalSocketStream &);
+		virtual int accept(Channel *);
 };
 
 #endif

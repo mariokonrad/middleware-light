@@ -49,10 +49,21 @@ inline T swap_bytes(T v)
 	return x.v;
 }
 
+template <>
+inline uint8_t swap_bytes(uint8_t v)
+{
+	return v;
+}
+
 template <typename T>
 inline bool is_little()
 {
-	static const bool LITTLE = ((union { T x; uint8_t c[sizeof(T)]; }) { 0x01}).c[0] == 0x01;
+	const static union U {
+		T x;
+		uint8_t c[sizeof(T)];
+	} u = { 1 };
+	static const bool LITTLE = u.c[0] == 0x01;
+	//static const bool LITTLE = ((union { T x; uint8_t c[sizeof(T)]; }) { 0x01}).c[0] == 0x01; // disabled: not ANSI C++
 	return LITTLE;
 }
 

@@ -2,12 +2,10 @@
 #include <sys/socket.h>
 
 LocalSocketStream::LocalSocketStream()
-	: fd(-1)
 {}
 
 LocalSocketStream::LocalSocketStream(const std::string & path)
-	: fd(-1)
-	, path(path)
+	: path(path)
 {
 	addr.sun_family = AF_UNIX;
 	strncpy(addr.sun_path, path.c_str(), sizeof(addr.sun_path)-1);
@@ -18,12 +16,19 @@ LocalSocketStream::~LocalSocketStream()
 	close();
 }
 
-void LocalSocketStream::init(int fd, const std::string & path, struct sockaddr_un & addr)
+void LocalSocketStream::init(const std::string & path, struct sockaddr_un & addr)
+{
+	this->path = path;
+	this->addr = addr;
+}
+
+int LocalSocketStream::init(int fd)
 {
 	close();
 	this->fd = fd;
-	this->path = path;
-	this->addr = addr;
+	this->path = "";
+	memset(&this->addr, 0, sizeof(this->addr));
+	return 0;
 }
 
 int LocalSocketStream::open()

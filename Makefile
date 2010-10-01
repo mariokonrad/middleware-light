@@ -31,13 +31,13 @@ clean :
 	rm -f interface interface.tab.* lex.yy.* *.o test.cpp test.hpp client server
 	rm -f thread_test
 
-test :
-	cat test.interface | ./interface && g++ -c test.cpp -I.
+test.cpp test.hpp : interface test.interface
+	cat test.interface | ./interface
 
-client : client.o LocalSocketStream.o
+client : test.o client.o LocalSocketStream.o
 	$(CXX) -o $@ $^
 
-server : server.o LocalSocketStream.o LocalSocketStreamServer.o Executor.o ThreadBase.o
+server : LocalSocketStream.o LocalSocketStreamServer.o Executor.o ThreadBase.o Selector.o test.o server.o
 	$(CXX) -o $@ $^ -lpthread
 
 %.o : %.c
