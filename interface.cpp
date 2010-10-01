@@ -41,6 +41,7 @@ static void write_header()
 		for (Model::Module::Messages::const_iterator message = module->msg.begin(); message != module->msg.end(); ++message) {
 			ofs << indent << "struct " << message->identifier << " {" << endl;
 			++indent;
+			ofs << indent << "enum { TYPE = " << message->type << " };" << endl;
 			for (Model::Message::Attributes::const_iterator attr = message->attr.begin(); attr != message->attr.end(); ++attr) {
 				ofs << indent << types[attr->type] << " " << attr->identifier;
 				if (attr->type == STRING) ofs << "[" << attr->attribute_size << "]";

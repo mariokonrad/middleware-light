@@ -27,6 +27,7 @@ class Model
 			typedef std::vector<Attribute> Attributes;
 
 			std::string identifier;
+			int type;
 			Attributes attr;
 		};
 
@@ -46,7 +47,7 @@ class Model
 		Modules modules;
 	public:
 		void add_attribute(int, const char *, int = 0, int = 1);
-		void add_message(const char *);
+		void add_message(const char *, int);
 		void add_module(const char *);
 };
 

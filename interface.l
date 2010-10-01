@@ -29,8 +29,9 @@ extern int yyerror(const char *);
 ">"                    { return '>'; }
 "["                    { return '['; }
 "]"                    { return ']'; }
-[1-9][0-9]*            { yylval.i = atoi(yytext); return NUMBER; }
-[_a-zA-Z][_a-zA-Z0-9]* { yylval.identifier = strdup(yytext); return IDENTIFIER; }
+[1-9][0-9]*            { yylval.i = strtol(yytext, NULL, 0); return NUMBER; }
+0[Xx][0-9a-fA-F]*      { yylval.i = strtol(yytext, NULL, 0); return NUMBER; }
+[_a-zA-Z][_a-zA-Z0-9]* { strncpy(yylval.identifier, yytext, sizeof(yylval.identifier)-1); return IDENTIFIER; }
 " "                    {}
 "\t"                   {}
 "\n"                   {}

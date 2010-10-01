@@ -5,9 +5,10 @@ void Model::add_attribute(int type, const char * identifier, int attribute_size,
 	message.attr.push_back(Attribute(type, identifier, attribute_size, array_size));
 }
 
-void Model::add_message(const char * identifier)
+void Model::add_message(const char * identifier, int type)
 {
 	message.identifier = identifier;
+	message.type = type;
 	module.msg.push_back(message);
 	message = Message();
 }

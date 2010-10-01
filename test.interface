@@ -1,6 +1,6 @@
 module test
 {
-	message A
+	message A <1>
 	{
 		uint8 a
 		uint16 b
@@ -8,18 +8,18 @@ module test
 		uint64 d
 	}
 
-	message B
+	message B <2>
 	{
 		float a
 		double b
 	}
 
-	message C
+	message C <0x3>
 	{
 		string<64> a
 	}
 
-	message D
+	message D <0x4>
 	{
 		uint32 a[16]
 		string<32> b[4]

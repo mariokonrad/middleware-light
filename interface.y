@@ -16,7 +16,7 @@ extern Model model;
 
 %union {
 	int i;
-	char * identifier;
+	char identifier[128];
 }
 
 %token MODULE MESSAGE
@@ -60,9 +60,9 @@ message_list
 	;
 
 message
-	: MESSAGE IDENTIFIER '{' attribute_list '}'
+	: MESSAGE IDENTIFIER '<' NUMBER '>' '{' attribute_list '}'
 		{
-			model.add_message($2);
+			model.add_message($2, $4);
 		}
 	| /* epsilon */
 	;
