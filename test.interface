@@ -1,0 +1,27 @@
+module test
+{
+	message A
+	{
+		uint8 a
+		uint16 b
+		uint32 c
+		uint64 d
+	}
+
+	message B
+	{
+		float a
+		double b
+	}
+
+	message C
+	{
+		string<64> a
+	}
+
+	message D
+	{
+		uint32 a[16]
+		string<32> b[4]
+	}
+}
