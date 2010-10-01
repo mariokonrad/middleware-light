@@ -13,9 +13,11 @@ class Client : public Runnable
 {
 	private:
 		LocalSocketStreamPtr conn;
+		int cnt;
 	public:
 		Client(LocalSocketStreamPtr conn)
 			: conn(conn)
+			, cnt(2)
 		{}
 
 		virtual ~Client()
@@ -23,6 +25,11 @@ class Client : public Runnable
 			conn.reset();
 		}
 		
+		virtual bool terminate() const
+		{
+			return cnt < 0;
+		}
+
 		virtual void run()
 		{
 			if (!conn.get()) return;
@@ -32,6 +39,7 @@ class Client : public Runnable
 			if (rc < 0) {
 				std::cerr << "ERROR: rc=" << rc << std::endl;
 				perror("select");
+				cnt = -1;
 				return;
 			}
 
@@ -39,13 +47,19 @@ class Client : public Runnable
 			uint8_t buf[sizeof(msg)];
 
 			rc = conn->recv(buf, sizeof(buf));
-			if (rc < 0) {
+			if (rc == 0) {
+				std::cerr << "ERROR: connection closed by peer, cnt=" << cnt << std::endl;
+				cnt = -1;
+				return;
+			} else if (rc < 0) {
 				std::cerr << "ERROR: rc=" << rc << std::endl;
 				perror("read");
+				cnt = -1;
 				return;
 			}
 			if (rc != sizeof(buf)) {
-				std::cerr << "ERROR: size mismatch" << std::endl;
+				std::cerr << "ERROR: size mismatch, rc=" << rc << " expected=" << sizeof(buf) << std::endl;
+				cnt = -1;
 				return;
 			}
 
@@ -57,7 +71,11 @@ class Client : public Runnable
 				<< " b=" << msg.b
 				<< " c=" << msg.c
 				<< " d=" << msg.d
-				<< " }" << std::endl;
+				<< " } "
+				<< " cnt=" << cnt
+				<< std::endl;
+
+			--cnt;
 		}
 };
 
@@ -93,7 +111,7 @@ int main(int, char **)
 	}
 
 	exec.execute(new Client(conn), true);
-	exec.execute(NULL);
+//	exec.execute(NULL);
 	exec.join();
 
 	sock.close();

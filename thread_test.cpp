@@ -11,6 +11,11 @@ class Foo : public Runnable
 			: name(name)
 		{}
 
+		virtual bool terminate() const
+		{
+			return true;
+		}
+
 		virtual void run()
 		{
 			for (int i = 0; i < 10; ++i) {

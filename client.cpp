@@ -20,12 +20,14 @@ int main(int, char **)
 	msg.d = 1234567890;
 	test::hton(msg);
 	test::serialize(buf, msg);
-	
-	int rc = sock.send(buf, sizeof(buf));
-	if (rc < 0) {
-		std::cerr << "ERROR: rc=" << rc << std::endl;
-		perror("write");
-		return -1;
+
+	for (int i = 0; i < 3; ++i) {
+		int rc = sock.send(buf, sizeof(buf));
+		if (rc < 0) {
+			std::cerr << "ERROR: rc=" << rc << std::endl;
+			perror("write");
+			return -1;
+		}
 	}
 
 	sock.close();

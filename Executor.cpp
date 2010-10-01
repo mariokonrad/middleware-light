@@ -20,8 +20,23 @@ void Executor::run()
 		pthread_mutex_unlock(&mtx);
 		if (entry.runnable == NULL) break;
 		entry.runnable->run();
-		if (entry.auto_destroy) delete entry.runnable;
+		if (entry.runnable->terminate()) {
+			if (entry.auto_destroy) delete entry.runnable;
+		} else {
+			if (execute(entry) < 0) {
+				if (entry.auto_destroy) delete entry.runnable;
+			}
+		}
 	}
+}
+
+int Executor::execute(const Entry & entry)
+{
+	pthread_mutex_lock(&mtx);
+	queue.push_back(entry);
+	pthread_cond_signal(&non_empty);
+	pthread_mutex_unlock(&mtx);
+	return 0;
 }
 
 Executor::Executor()
@@ -34,7 +49,11 @@ Executor::~Executor()
 {
 	pthread_cond_destroy(&non_empty);
 	pthread_mutex_destroy(&mtx);
-	queue.clear();
+	while (queue.size()) {
+		Entry entry = queue.front();
+		queue.pop_front();
+		if (entry.auto_destroy && entry.runnable) delete entry.runnable;
+	}
 }
 
 int Executor::start()
@@ -46,11 +65,7 @@ int Executor::start()
 
 int Executor::execute(Runnable * runnable, bool auto_destroy)
 {
-	pthread_mutex_lock(&mtx);
-	queue.push_back(Entry(runnable, auto_destroy));
-	pthread_cond_signal(&non_empty);
-	pthread_mutex_unlock(&mtx);
-	return 0;
+	return execute(Entry(runnable, auto_destroy));
 }
 
 Executor::size_type Executor::size()

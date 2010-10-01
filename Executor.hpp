@@ -29,6 +29,7 @@ class Executor : public ThreadBase
 		static void * execute_executor(void *);
 	private:
 		void run();
+		virtual int execute(const Entry &);
 	public:
 		Executor();
 		virtual ~Executor();
