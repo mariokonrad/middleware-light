@@ -34,10 +34,10 @@ clean :
 test.cpp test.hpp : interface test.interface
 	cat test.interface | ./interface
 
-client : test.o client.o LocalSocketStream.o
+client : test.o client.o LocalSocketStream.o Message.o
 	$(CXX) -o $@ $^
 
-server : LocalSocketStream.o LocalSocketStreamServer.o Executor.o ThreadBase.o Selector.o test.o server.o
+server : LocalSocketStream.o LocalSocketStreamServer.o Executor.o ThreadBase.o Selector.o test.o server.o Message.o
 	$(CXX) -o $@ $^ -lpthread
 
 %.o : %.c

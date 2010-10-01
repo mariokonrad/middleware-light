@@ -5,6 +5,7 @@
 #include <Selector.hpp>
 #include <iostream>
 #include <memory>
+#include <Message.hpp>
 #include <test.hpp> // generated
 
 typedef std::auto_ptr<LocalSocketStream> LocalSocketStreamPtr;
@@ -43,10 +44,16 @@ class Client : public Runnable
 				return;
 			}
 
+			Head head;
 			test::A msg;
-			uint8_t buf[sizeof(msg)];
+			uint8_t buf[sizeof(head)+sizeof(msg)];
 
-			rc = conn->recv(buf, sizeof(buf));
+			rc = conn->recv(buf, sizeof(head));
+std::cerr << "rc=" << rc << std::endl;
+			rc = conn->recv(buf, sizeof(msg));
+std::cerr << "rc=" << rc << std::endl;
+
+//			rc = conn->recv(buf, sizeof(buf));
 			if (rc == 0) {
 				std::cerr << "ERROR: connection closed by peer, cnt=" << cnt << std::endl;
 				cnt = -1;
@@ -63,10 +70,20 @@ class Client : public Runnable
 				return;
 			}
 
-			test::deserialize(msg, buf);
+			deserialize(head, buf);
+			test::deserialize(msg, buf+sizeof(head));
+
+			ntoh(head);
 			test::ntoh(msg);
 
-			std::cout << "msg: {"
+			std::cout
+				<< "head:{"
+				<< " src=" << head.src
+				<< " dst=" << head.dst
+				<< " type=" << head.type
+				<< " size=" << head.size
+				<< " } "
+				<< "msg:{"
 				<< " a=" << static_cast<int>(msg.a)
 				<< " b=" << msg.b
 				<< " c=" << msg.c
