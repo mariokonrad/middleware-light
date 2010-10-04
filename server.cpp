@@ -48,12 +48,14 @@ class Client : public Runnable
 			test::A msg;
 			uint8_t buf[sizeof(head)+sizeof(msg)];
 
+/*
 			rc = conn->recv(buf, sizeof(head));
 std::cerr << "rc=" << rc << std::endl;
 			rc = conn->recv(buf, sizeof(msg));
 std::cerr << "rc=" << rc << std::endl;
+*/
 
-//			rc = conn->recv(buf, sizeof(buf));
+			rc = conn->recv(buf, sizeof(buf));
 			if (rc == 0) {
 				std::cerr << "ERROR: connection closed by peer, cnt=" << cnt << std::endl;
 				cnt = -1;
@@ -113,7 +115,6 @@ int main(int, char **)
 	Executor exec;
 	exec.start();
 
-	LocalSocketStreamPtr conn(new LocalSocketStream);
 	rc = Selector::select(sock);
 	if (rc < 0) {
 		std::cerr << "ERROR: cannot accept connection" << std::endl;
@@ -121,6 +122,7 @@ int main(int, char **)
 		return -1;
 	}
 
+	LocalSocketStreamPtr conn(new LocalSocketStream);
 	rc = sock.accept(conn.get());
 	if (rc < 0) {
 		std::cerr << "ERROR: cannot accept connection" << std::endl;
