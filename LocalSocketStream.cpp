@@ -60,7 +60,7 @@ int LocalSocketStream::send(const void * buf, unsigned int size)
 	if (size == 0) return -1;
 	int rc = ::send(fd, buf, size, 0);
 	if (rc < 0) return -1;
-	return 0;
+	return rc;
 }
 
 int LocalSocketStream::recv(void * buf, unsigned int size)

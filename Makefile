@@ -6,7 +6,7 @@ CFLAGS=
 CXX=g++
 CXXFLAGS=-Wall -Wextra -ansi -pedantic -I. -ggdb
 
-all : interface client server server-module thread_test
+all : interface client server module thread_test
 
 thread_test : thread_test.o ThreadBase.o Thread.o Executor.o
 	$(CXX) -o $@ $^ -lpthread
@@ -28,7 +28,7 @@ lex.yy.o : lex.yy.c interface.tab.h
 	$(CXX) -o $@ -c lex.yy.c $(CXXFLAGS)
 
 clean :
-	rm -f interface interface.tab.* lex.yy.* *.o test.cpp test.hpp client server server-module
+	rm -f interface interface.tab.* lex.yy.* *.o test.cpp test.hpp client server module
 	rm -f thread_test
 
 test.cpp test.hpp : interface test.interface
@@ -40,7 +40,7 @@ client : test.o client.o LocalSocketStream.o Message.o
 server : LocalSocketStream.o LocalSocketStreamServer.o Executor.o ThreadBase.o Selector.o test.o server.o Message.o
 	$(CXX) -o $@ $^ -lpthread
 
-server-module : LocalSocketStream.o LocalSocketStreamServer.o Executor.o ThreadBase.o Selector.o test.o server-module.o Message.o
+module : LocalSocketStream.o LocalSocketStreamServer.o Executor.o Thread.o ThreadBase.o Selector.o test.o module.o Message.o
 	$(CXX) -o $@ $^ -lpthread
 
 %.o : %.c

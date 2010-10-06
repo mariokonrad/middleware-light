@@ -38,25 +38,24 @@ void Selector::remove(Device * device)
 	set_fd_max();
 }
 
-int Selector::select(Device ** device)
+int Selector::select(Selector::Devices & devs)
 {
 	// TODO: timeout
 	// TODO: signals (pselect)
 
-	if (!device) return -1;
-
 	fd_set rfds = rfds_cache;
 
-	int rc = ::pselect(fd_max, &rfds, NULL, NULL, NULL, NULL);
+	int rc = ::pselect(fd_max+1, &rfds, NULL, NULL, NULL, NULL);
 	if (rc < 0) return -1;
 
+	devs.clear();
+	devs.reserve(rc);
 	for (Devices::iterator i = devices.begin(); i != devices.end(); ++i) {
 		if (FD_ISSET((*i)->fd, &rfds)) {
-			*device = *i;
-			return 0;
+			devs.push_back(*i);
 		}
 	}
-	return -1;
+	return rc;
 }
 
 int Selector::select(Device & device)

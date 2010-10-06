@@ -8,7 +8,7 @@ class Device;
 
 class Selector
 {
-	private:
+	public:
 		typedef std::vector<Device *> Devices;
 	private:
 		Devices devices;
@@ -21,7 +21,7 @@ class Selector
 		~Selector();
 		void add(Device *);
 		void remove(Device *);
-		int select(Device **);
+		int select(Devices &);
 		static int select(Device &);
 };
 
