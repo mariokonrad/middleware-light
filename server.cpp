@@ -46,7 +46,7 @@ class Client : public Runnable
 
 			Head head;
 			test::A msg;
-			uint8_t buf[sizeof(head)+sizeof(msg)];
+			uint8_t buf[sizeof(msg)];
 
 /*
 			rc = conn->recv(buf, sizeof(head));
@@ -55,7 +55,7 @@ std::cerr << "rc=" << rc << std::endl;
 std::cerr << "rc=" << rc << std::endl;
 */
 
-			rc = conn->recv(buf, sizeof(buf));
+			rc = conn->recv(head, buf, sizeof(buf));
 			if (rc == 0) {
 				std::cerr << "ERROR: connection closed by peer, cnt=" << cnt << std::endl;
 				cnt = -1;
@@ -72,10 +72,8 @@ std::cerr << "rc=" << rc << std::endl;
 				return;
 			}
 
-			deserialize(head, buf);
-			test::deserialize(msg, buf+sizeof(head));
+			test::deserialize(msg, buf);
 
-			ntoh(head);
 			test::ntoh(msg);
 
 			std::cout

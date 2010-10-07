@@ -2,6 +2,8 @@
 #include <LocalSocketStreamServer.hpp>
 #include <Thread.hpp>
 #include <Runnable.hpp>
+#include <Mutex.hpp>
+#include <ConditionVar.hpp>
 #include <Selector.hpp>
 #include <list>
 #include <memory>
@@ -11,11 +13,7 @@
 
 #define PING  do { std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << std::endl; } while (0)
 
-#define UNUSED_ARG(a)   static_cast<void>(a)
-
 enum { MAX_BODY_SIZE = 2048 };
-
-static const char * SOCKNAME = "/tmp/demo.sock";
 
 class ModuleSkelBase // {{{
 {
@@ -27,49 +25,56 @@ class ModuleSkelBase // {{{
 class ModuleServer : public Runnable // {{{
 {
 	private:
-		typedef std::auto_ptr<LocalSocketStreamServer> ServerPtr;
-		typedef std::auto_ptr<LocalSocketStream> ClientPtr;
-		typedef std::list<LocalSocketStream *> ClientList;
+		typedef std::list<Server *> ServerList;
+		typedef std::list<Channel *> ClientList;
 	private:
 		ModuleSkelBase * module;
 		Selector selector;
-		ServerPtr server;
+		ServerList servers;
 		ClientList clients;
+		bool do_terminate;
 	protected:
 		virtual void run();
 		virtual bool terminate() const;
 	public:
 		ModuleServer(ModuleSkelBase * = NULL);
 		virtual ~ModuleServer();
+		void add(Server *);
+		void stop();
 };
 
 ModuleServer::ModuleServer(ModuleSkelBase * module)
 	: module(module)
-{
-	unlink(SOCKNAME);
-	server = ServerPtr(new LocalSocketStreamServer(SOCKNAME));
-	if (server->open() < 0) {
-		server.reset();
-		return;
-	}
-}
+	, do_terminate(false)
+{}
 
 ModuleServer::~ModuleServer()
 {
-	server.reset();
+	while (clients.size()) {
+		delete clients.front();
+		clients.pop_front();
+	}
+}
+
+void ModuleServer::add(Server * server)
+{
+	servers.push_back(server);
+}
+
+void ModuleServer::stop()
+{
+	do_terminate = true;
+	// TODO: graceful termination (how to wake up selector?)
 }
 
 void ModuleServer::run()
 {
-	// TODO: client connection ending
-	// TODO: graceful termination
-	// TODO: multiple server
+	for (ServerList::iterator i = servers.begin(); i != servers.end(); ++i) selector.add(*i);
 
-	if (!server.get()) return;
-	selector.add(server.get());
-	for (;;) {
+	while (!terminate()) {
 		Selector::Devices devices;
 		int rc = selector.select(devices);
+		if (terminate()) break;
 		if (rc < 0) {
 			std::cerr << "ERROR: wait on connection" << std::endl;
 			return;
@@ -78,42 +83,41 @@ void ModuleServer::run()
 		for (Selector::Devices::iterator i = devices.begin(); i != devices.end(); ++i) {
 			Device * device = *i;
 
-			if (device == server.get()) {
-				ClientPtr s = ClientPtr(new LocalSocketStream);
-				rc = server->accept(s.get());
+			Server * server = dynamic_cast<Server *>(device);
+			if (server ) {
+				Channel * channel = server->create();
+				rc = server->accept(channel);
 				if (rc < 0) {
+					if (channel) delete channel;
 					std::cerr << "ERROR: cannot accept connection" << std::endl;
 					continue;
 				}
-				selector.add(s.get());
-				clients.push_back(s.release());
+				selector.add(channel);
+				clients.push_back(channel);
 				continue;
 			}
 
-			LocalSocketStream * s = dynamic_cast<LocalSocketStream *>(device);
-			if (!s) {
-				std::cerr << "ERROR: unknown object type" << std::endl;
-				continue;
-			}
-
-			Head head;
-			uint8_t buf[sizeof(head)+MAX_BODY_SIZE];
-			rc = s->recv(buf, sizeof(buf));
-			if (rc < 0) {
-				std::cerr << "ERROR: cannot read head" << std::endl;
-				continue;
-			} else if (rc == 0) {
-				// client has been disconnected
-				selector.remove(device);
-				continue;
-			} else {
-				if (module) {
-					deserialize(head, buf);
-					ntoh(head);
-					rc = module->received(head, buf+sizeof(head));
-					if (rc < 0) {
-						std::cerr << "ERROR: cannot handle message, discarding" << std::endl;
-						continue;
+			Channel * channel = dynamic_cast<Channel *>(device);
+			if (channel) {
+				Head head;
+				uint8_t buf[MAX_BODY_SIZE];
+				rc = channel->recv(head, buf, sizeof(buf));
+				if (rc < 0) {
+					std::cerr << "ERROR: cannot read head" << std::endl;
+					continue;
+				} else if (rc == 0) {
+					// client has been disconnected
+					selector.remove(device);
+					clients.erase(find(clients.begin(), clients.end(), channel));
+					delete channel;
+					continue;
+				} else {
+					if (module) {
+						rc = module->received(head, buf);
+						if (rc < 0) {
+							std::cerr << "ERROR: cannot handle message, discarding" << std::endl;
+							continue;
+						}
 					}
 				}
 			}
@@ -123,8 +127,7 @@ void ModuleServer::run()
 
 bool ModuleServer::terminate() const
 {
-	// TODO
-	return true;
+	return do_terminate;
 }
 
 // }}}
@@ -147,11 +150,10 @@ class ModuleSkel // {{{
 		};
 		typedef std::list<Entry> Queue;
 	private:
+		std::string sockname;
 		Queue queue;
-		pthread_mutex_t mtx;
-		pthread_cond_t non_empty;
-	protected:
-		bool do_terminate;
+		Mutex mtx;
+		ConditionVar non_empty;
 	private:
 		template <class T> void dispatch(const Head &, const uint8_t *);
 	protected:
@@ -159,8 +161,9 @@ class ModuleSkel // {{{
 		virtual void recv(const Head &, const test::B &) = 0;
 		virtual void recv(const Head &, const test::C &) = 0;
 		virtual void recv(const Head &, const test::D &) = 0;
+		virtual void recv(const Head &, const test::terminate &) = 0;
 	public:
-		ModuleSkel();
+		ModuleSkel(const std::string &);
 		virtual ~ModuleSkel();
 		virtual void run();
 		virtual int received(const Head &, const uint8_t *);
@@ -174,22 +177,24 @@ template <class T> void ModuleSkel::dispatch(const Head & head, const uint8_t * 
 	recv(head, msg);
 }
 
-ModuleSkel::ModuleSkel()
-	: do_terminate(false)
-{
-	pthread_mutex_init(&mtx, NULL);
-	pthread_cond_init(&non_empty, NULL);
-}
+ModuleSkel::ModuleSkel(const std::string & sockname)
+	: sockname(sockname)
+{}
 
 ModuleSkel::~ModuleSkel()
-{
-	pthread_cond_destroy(&non_empty);
-	pthread_mutex_destroy(&mtx);
-}
+{}
 
 void ModuleSkel::run()
 {
 	ModuleServer server(this);
+
+	LocalSocketStreamServer socket(sockname);
+	if (socket.open() < 0) {
+		std::cerr << "ERROR: cannot initialize local socket" << std::endl;
+		return;
+	}
+	server.add(&socket);
+
 	Thread server_thread(&server);
 	if (server_thread.start()) {
 		std::cerr << "ERROR: cannot start server thread" << std::endl;
@@ -198,35 +203,36 @@ void ModuleSkel::run()
 
 	// TODO: graceful and erarly termination of module and module server
 
-	while (!do_terminate) {
-		pthread_mutex_lock(&mtx);
-		while (queue.empty()) pthread_cond_wait(&non_empty, &mtx);
+	while (!terminate()) {
+		mtx.lock();
+		while (queue.empty()) non_empty.wait(mtx);
 		Entry entry = queue.front();
 		queue.pop_front();
-		pthread_mutex_unlock(&mtx);
+		mtx.unlock();
 
 		switch (entry.head.type) {
 			case test::A::TYPE: dispatch<test::A>(entry.head, entry.buf); break;
 			case test::B::TYPE: dispatch<test::B>(entry.head, entry.buf); break;
 			case test::C::TYPE: dispatch<test::C>(entry.head, entry.buf); break;
 			case test::D::TYPE: dispatch<test::D>(entry.head, entry.buf); break;
+			case test::terminate::TYPE: dispatch<test::terminate>(entry.head, entry.buf); break;
 			default: break; // ingore all unknown
 		}
 	}
-
+	server.stop();
 	server_thread.join();
 }
 
 int ModuleSkel::received(const Head & head, const uint8_t * buf)
 {
 	int rc = -1;
-	pthread_mutex_lock(&mtx);
+	mtx.lock();
 	if (queue.size() < MAX_QUEUE_SIZE) {
 		rc = 0;
 		queue.push_back(Entry(head, buf));
-		pthread_cond_broadcast(&non_empty);
+		non_empty.broadcast();
 	}
-	pthread_mutex_unlock(&mtx);
+	mtx.unlock();
 	return rc;
 }
 
@@ -235,14 +241,23 @@ int ModuleSkel::received(const Head & head, const uint8_t * buf)
 class Module : public ModuleSkel // {{{
 {
 	protected:
+		bool do_terminate;
+	protected:
 		virtual void recv(const Head &, const test::A &);
 		virtual void recv(const Head &, const test::B &);
 		virtual void recv(const Head &, const test::C &);
 		virtual void recv(const Head &, const test::D &);
+		virtual void recv(const Head &, const test::terminate &);
 	public:
+		Module(const std::string &);
 		virtual ~Module();
 		virtual bool terminate() const;
 };
+
+Module::Module(const std::string & sockname)
+	: ModuleSkel(sockname)
+	, do_terminate(false)
+{}
 
 Module::~Module()
 {}
@@ -252,14 +267,14 @@ bool Module::terminate() const
 	return do_terminate;
 }
 
-void Module::recv(const Head &, const test::A &)
+void Module::recv(const Head &, const test::A & m)
 {
-	std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << std::endl;
+	std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": { " << static_cast<int>(m.a) << " " << m.b << " " << m.c << " " << m.d << " }" << std::endl;
 }
 
-void Module::recv(const Head &, const test::B &)
+void Module::recv(const Head &, const test::B & m)
 {
-	std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << std::endl;
+	std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": { " << m.a << " " << m.b << " }" << std::endl;
 }
 
 void Module::recv(const Head &, const test::C &)
@@ -272,23 +287,29 @@ void Module::recv(const Head &, const test::D &)
 	std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << std::endl;
 }
 
+void Module::recv(const Head &, const test::terminate &)
+{
+	std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << std::endl;
+	do_terminate = true;
+}
+
 // }}}
 
 class ModuleStub // {{{
 {
 	private:
-		typedef std::auto_ptr<LocalSocketStream> ClientPtr;
+		typedef std::auto_ptr<Channel> ClientPtr;
 	private:
 		ClientPtr conn;
 	public:
-		ModuleStub();
+		ModuleStub(const std::string &);
 		virtual ~ModuleStub();
 		template <class T> int send(const T &);
 };
 
-ModuleStub::ModuleStub()
+ModuleStub::ModuleStub(const std::string & sockname)
 {
-	conn = ClientPtr(new LocalSocketStream(SOCKNAME));
+	conn = ClientPtr(new LocalSocketStream(sockname));
 	if (conn->open()) {
 		std::cerr << "cannot open connection to module" << std::endl;
 		conn.reset();
@@ -302,28 +323,20 @@ template <class T> int ModuleStub::send(const T & msg)
 {
 	if (!conn.get()) return -1;
 
-	uint8_t buf[sizeof(Head)+MAX_BODY_SIZE];
-
-	Head head;
-	head.src = 0;
-	head.dst = 0;
-	head.type = T::TYPE;
-	head.size = sizeof(T);
-
-	hton(head);
-	serialize(buf, head);
-
+	uint8_t buf[sizeof(T)];
 	T clone_msg(msg);
 	test::hton(clone_msg);
-	test::serialize(buf+sizeof(Head), clone_msg);
+	test::serialize(buf, clone_msg);
 
-	return conn->send(buf, sizeof(Head)+sizeof(T));
+	return conn->send(Head(0, 0, T::TYPE, sizeof(T)), buf, sizeof(T));
 }
 
 // }}}
 
 int main(int argc, char ** argv)
 {
+	static const char * SOCKNAME = "/tmp/demo.sock";
+
 	if (argc != 2) {
 		std::cout << "usage: " << argv[0] << " [client|server]" << std::endl;
 		return -1;
@@ -332,15 +345,26 @@ int main(int argc, char ** argv)
 	std::string type(argv[1]);
 
 	if (type == "client") {
-		ModuleStub module;
-		test::A msg;
-		msg.a = 123;
-		msg.b = 12345;
-		msg.c = 12345678;
-		msg.d = 1234567890;
-		module.send(msg);
+		ModuleStub module(SOCKNAME);
+
+		test::A msg_a;
+		msg_a.a = 123;
+		msg_a.b = 12345;
+		msg_a.c = 12345678;
+		msg_a.d = 1234567890;
+
+		test::B msg_b;
+		msg_b.a = 3.141f;
+		msg_b.b = 2.718;
+
+		test::terminate msg_term;
+
+		module.send(msg_a);
+		module.send(msg_b);
+		module.send(msg_a);
+		module.send(msg_term);
 	} else if (type == "server") {
-		Module module;
+		Module module(SOCKNAME);
 		module.run();
 	} else {
 		std::cout << "unknown type '" << argv[1] << "'" << std::endl;

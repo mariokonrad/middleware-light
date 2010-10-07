@@ -9,6 +9,7 @@ class Server : public Device
 {
 	public:
 		virtual ~Server() {}
+		virtual Channel * create() = 0;
 		virtual int accept(Channel *) = 0;
 };
 

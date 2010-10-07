@@ -18,7 +18,6 @@ int main(int, char **)
 	head.dst = 0;
 	head.type = test::A::TYPE;
 	head.size = sizeof(test::A);
-	hton(head);
 
 	test::A msg;
 	msg.a = 123;
@@ -27,12 +26,11 @@ int main(int, char **)
 	msg.d = 1234567890;
 	test::hton(msg);
 
-	uint8_t buf[sizeof(Head)+sizeof(msg)];
-	serialize(buf, head);
-	test::serialize(buf+sizeof(Head), msg);
+	uint8_t buf[sizeof(msg)];
+	test::serialize(buf, msg);
 
 	for (int i = 0; i < 3; ++i) {
-		int rc = sock.send(buf, sizeof(buf));
+		int rc = sock.send(head, buf, sizeof(buf));
 		if (rc < 0) {
 			std::cerr << "ERROR: rc=" << rc << std::endl;
 			perror("write");

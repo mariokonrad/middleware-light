@@ -15,6 +15,7 @@ class LocalSocketStreamServer : public Server
 		virtual ~LocalSocketStreamServer();
 		virtual int open();
 		virtual int close();
+		virtual Channel * create();
 		virtual int accept(Channel *);
 };
 

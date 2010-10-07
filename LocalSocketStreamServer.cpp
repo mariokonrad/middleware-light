@@ -16,6 +16,7 @@ LocalSocketStreamServer::~LocalSocketStreamServer()
 
 int LocalSocketStreamServer::open()
 {
+	::unlink(path.c_str());
 	fd = ::socket(PF_LOCAL, SOCK_STREAM, 0);
 	if (fd < 0) return -1;
 	int rc = ::bind(fd, reinterpret_cast<const struct sockaddr *>(&addr), sizeof(addr));
@@ -38,6 +39,11 @@ int LocalSocketStreamServer::close()
 		fd = -1;
 	}
 	return 0;
+}
+
+Channel * LocalSocketStreamServer::create()
+{
+	return new LocalSocketStream;
 }
 
 int LocalSocketStreamServer::accept(Channel * ch)

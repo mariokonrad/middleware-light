@@ -24,4 +24,6 @@ module test
 		uint32 a[16]
 		string<32> b[4]
 	}
+
+	message terminate <0xff> {}
 }

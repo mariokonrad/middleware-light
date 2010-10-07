@@ -1,6 +1,8 @@
 #include <LocalSocketStream.hpp>
 #include <sys/socket.h>
 
+#include <iostream> // TODO:TEMP
+
 LocalSocketStream::LocalSocketStream()
 {}
 
@@ -53,23 +55,42 @@ int LocalSocketStream::close()
 	return 0;
 }
 
-int LocalSocketStream::send(const void * buf, unsigned int size)
+int LocalSocketStream::send(const Head & head, const void * buf, unsigned int size)
 {
 	if (fd < 0) return -1;
 	if (!buf) return -1;
 	if (size == 0) return -1;
-	int rc = ::send(fd, buf, size, 0);
+
+	Head clone_head(head);
+	uint8_t buf_head[sizeof(head)];
+	hton(clone_head);
+	serialize(buf_head, clone_head);
+
+	int rc = ::write(fd, buf_head, sizeof(buf_head));
+	if (rc < 0) return -1;
+
+	rc = ::write(fd, buf, size);
 	if (rc < 0) return -1;
 	return rc;
 }
 
-int LocalSocketStream::recv(void * buf, unsigned int size)
+int LocalSocketStream::recv(Head & head, void * buf, unsigned int size)
 {
 	if (fd < 0) return -1;
 	if (!buf) return -1;
 	if (size == 0) return -1;
-	int rc = ::recv(fd, buf, size, 0);
+
+	uint8_t buf_head[sizeof(head)];
+	int rc = ::read(fd, buf_head, sizeof(buf_head));
 	if (rc < 0) return -1;
+	if (rc == 0) return 0;
+	deserialize(head, buf_head);
+	ntoh(head);
+
+	if (head.size > size) return -2;
+
+	rc = ::read(fd, buf, head.size);
+	if (rc < 0) return -3;
 	return rc;
 }
 

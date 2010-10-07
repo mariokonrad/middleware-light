@@ -20,8 +20,8 @@ class LocalSocketStream : public Channel
 		virtual ~LocalSocketStream();
 		virtual int open();
 		virtual int close();
-		virtual int send(const void *, unsigned int);
-		virtual int recv(void *, unsigned int);
+		virtual int send(const Head &, const void *, unsigned int);
+		virtual int recv(Head &, void *, unsigned int);
 };
 
 #endif

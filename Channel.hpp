@@ -2,6 +2,7 @@
 #define __CHANNEL__HPP__
 
 #include <Device.hpp>
+#include <Message.hpp>
 
 class Channel : public Device
 {
@@ -9,8 +10,8 @@ class Channel : public Device
 		virtual int init(int) = 0;
 	public:
 		virtual ~Channel() {}
-		virtual int send(const void *, unsigned int) = 0;
-		virtual int recv(void *, unsigned int) = 0;
+		virtual int send(const Head &, const void *, unsigned int) = 0;
+		virtual int recv(Head &, void *, unsigned int) = 0;
 };
 
 #endif

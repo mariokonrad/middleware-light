@@ -21,28 +21,14 @@ void ntoh(struct Head & m)
 int serialize(uint8_t * buf, const struct Head & m)
 {
 	if (!buf) return -1;
-	memcpy(buf, &m.src, sizeof(m.src));
-	buf += sizeof(m.src);
-	memcpy(buf, &m.dst, sizeof(m.dst));
-	buf += sizeof(m.dst);
-	memcpy(buf, &m.type, sizeof(m.type));
-	buf += sizeof(m.type);
-	memcpy(buf, &m.size, sizeof(m.size));
-	buf += sizeof(m.size);
+	memcpy(buf, &m, sizeof(m));
 	return 0;
 }
 
 int deserialize(struct Head & m, const uint8_t * buf)
 {
 	if (!buf) return -1;
-	memcpy(&m.src, buf, sizeof(m.src));
-	buf += sizeof(m.src);
-	memcpy(&m.dst, buf, sizeof(m.dst));
-	buf += sizeof(m.dst);
-	memcpy(&m.type, buf, sizeof(m.type));
-	buf += sizeof(m.type);
-	memcpy(&m.size, buf, sizeof(m.size));
-	buf += sizeof(m.size);
+	memcpy(&m, buf, sizeof(m));
 	return 0;
 }
 
