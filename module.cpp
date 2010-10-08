@@ -1,118 +1,15 @@
 #include <LocalSocketStream.hpp>
 #include <LocalSocketStreamServer.hpp>
-#include <Thread.hpp>
-#include <Runnable.hpp>
-#include <Mutex.hpp>
-#include <ConditionVar.hpp>
-#include <ModuleSkelInterface.hpp>
-#include <ModuleServer.hpp>
-#include <list>
-#include <memory>
+#include <ModuleBase.hpp>
 #include <iostream>
-#include <Message.hpp>
 #include <test.hpp> // generated
 
 #define PING  do { std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << std::endl; } while (0)
 
-class ModuleSkel // {{{
-	: virtual public ModuleSkelInterface
-	, virtual public Runnable
-{
-	private:
-		struct Entry {
-			Entry() {}
-
-			Entry(const Head & head, const uint8_t * buffer)
-				: head(head)
-			{
-				memcpy(buf, buffer, (head.size > sizeof(buf)) ? sizeof(buf) : head.size);
-			}
-
-			Head head;
-			uint8_t buf[test::MAX_BODY_SIZE];
-		};
-		typedef std::list<Entry> Queue;
-	private:
-		ModuleServer server;
-		unsigned int max_queue_size;
-		Queue queue;
-		Mutex mtx;
-		ConditionVar non_empty;
-	private:
-		virtual void dispatch_message(const Head &, const uint8_t *) = 0;
-	public:
-		ModuleSkel(unsigned int);
-		virtual ~ModuleSkel();
-		virtual void run();
-		virtual int receive(Channel *);
-		void add(Server *);
-};
-
-ModuleSkel::ModuleSkel(unsigned int max_queue_size)
-	: server(this)
-	, max_queue_size(max_queue_size)
-{}
-
-ModuleSkel::~ModuleSkel()
-{}
-
-void ModuleSkel::add(Server * server)
-{
-	this->server.add(server);
-}
-
-void ModuleSkel::run()
-{
-	Thread server_thread(&server);
-	if (server_thread.start()) {
-		std::cerr << "ERROR: cannot start server thread" << std::endl;
-		return;
-	}
-
-	// TODO: erarly termination of module
-
-	while (!terminate()) {
-		mtx.lock();
-		while (queue.empty()) non_empty.wait(mtx);
-		Entry entry = queue.front();
-		queue.pop_front();
-		mtx.unlock();
-		dispatch_message(entry.head, entry.buf);
-
-	}
-	server.stop();
-	server_thread.join();
-}
-
-int ModuleSkel::receive(Channel * channel)
-{
-	if (!channel) return -1;
-	Entry entry;
-	int rc = channel->recv(entry.head, entry.buf, sizeof(entry.buf));
-	if (rc > 0) {
-		bool failure = true;
-		mtx.lock();
-		if (queue.size() < max_queue_size) {
-			failure = false;
-			queue.push_back(entry);
-			non_empty.broadcast();
-		}
-		mtx.unlock();
-		if (failure) std::cerr << "ERROR: cannot handle message, discarding" << std::endl;
-	}
-	return rc;
-}
-
-// }}}
-
 class Module // {{{
-	: public ModuleSkel
+	: public ModuleBase
 	, virtual public test::ModuleInterface
 {
-	private:
-		typedef std::auto_ptr<Server> ServerPtr;
-	private:
-		ServerPtr socket;
 	protected:
 		bool do_terminate;
 	protected:
@@ -122,8 +19,9 @@ class Module // {{{
 		virtual void recv(const Head &, const test::D &);
 		virtual void recv(const Head &, const test::terminate &);
 	protected:
-		virtual void dispatch_message(const Head & head, const uint8_t * buf)
-		{ dispatch(head, buf); }
+		virtual void dispatch_message(Message *);
+		virtual Message * create_message();
+		virtual void dispose_message(Message *);
 	public:
 		Module(const std::string &);
 		virtual ~Module();
@@ -131,25 +29,46 @@ class Module // {{{
 };
 
 Module::Module(const std::string & sockname)
-	: ModuleSkel(64)
-	, do_terminate(false)
+	: do_terminate(false)
 {
-	socket = ServerPtr(new LocalSocketStreamServer(sockname));
+	set_max_queue_size(64);
+	set_max_clients(0);
+	Server * socket = new LocalSocketStreamServer(sockname);
 	if (socket->open() < 0) {
+		Server::dispose(socket);
 		std::cerr << "ERROR: cannot initialize local socket" << std::endl;
 		return;
+	} else {
+		add(socket, true);
 	}
-	add(socket.get());
 }
 
 Module::~Module()
-{
-	socket.reset();
-}
+{}
 
 bool Module::terminate() const
 {
 	return do_terminate;
+}
+
+void Module::dispatch_message(Message * msg)
+{
+	dispatch(msg->head, msg->buf);
+}
+
+Message * Module::create_message()
+{
+	Message * msg = new Message;
+	msg->size = test::MAX_BODY_SIZE;
+	msg->buf = new uint8_t[test::MAX_BODY_SIZE];
+	return msg;
+}
+
+void Module::dispose_message(Message * msg)
+{
+	if (!msg) return;
+	delete [] msg->buf;
+	delete msg;
 }
 
 void Module::recv(const Head &, const test::A & m)

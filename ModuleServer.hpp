@@ -6,7 +6,7 @@
 #include <Selector.hpp>
 #include <list>
 
-class ModuleSkelInterface;
+class ModuleBaseInterface;
 class Server;
 class Channel;
 
@@ -14,15 +14,26 @@ class ModuleServer
 	: public Runnable
 {
 	private:
-		typedef std::list<Server *> ServerList;
+		struct ServerListEntry
+		{
+			ServerListEntry(Server * server, bool auto_destroy = false)
+				: server(server)
+				, auto_destroy(auto_destroy)
+			{}
+
+			Server * server;
+			bool auto_destroy;
+		};
+		typedef std::list<ServerListEntry> ServerList;
 		typedef std::list<Channel *> ClientList;
 	private:
-		ModuleSkelInterface * module;
+		ModuleBaseInterface * module;
 		Selector selector;
 		ServerList servers;
 		ClientList clients;
 		bool do_terminate;
 		Pipe pipe;
+		unsigned int max_clients;
 	private:
 		bool handle_pipe(Device *);
 		bool handle_server(Device *);
@@ -31,9 +42,10 @@ class ModuleServer
 		virtual void run();
 		virtual bool terminate() const;
 	public:
-		ModuleServer(ModuleSkelInterface * = NULL);
+		ModuleServer(ModuleBaseInterface * = NULL);
 		virtual ~ModuleServer();
-		void add(Server *);
+		void add(Server *, bool = false);
+		void set_max_clients(unsigned int);
 		void stop();
 };
 

@@ -8,9 +8,12 @@ class Channel;
 class Server : public Device
 {
 	public:
-		virtual ~Server() {}
-		virtual Channel * create() = 0;
+		virtual ~Server();
+		virtual Channel * create_channel() = 0;
+		virtual void dispose_channel(Channel *) = 0;
 		virtual int accept(Channel *) = 0;
+
+		static void dispose(Server *);
 };
 
 #endif

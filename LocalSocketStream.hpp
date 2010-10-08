@@ -12,10 +12,10 @@ class LocalSocketStream : public Channel
 		std::string path;
 		struct sockaddr_un addr;
 	private:
-		virtual int init(int);
+		virtual int init(int, Server *);
 		void init(const std::string &, struct sockaddr_un &);
-	public:
 		LocalSocketStream();
+	public:
 		LocalSocketStream(const std::string &);
 		virtual ~LocalSocketStream();
 		virtual int open();

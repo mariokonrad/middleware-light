@@ -3,7 +3,8 @@
 
 #include <stdint.h>
 
-struct Head {
+struct Head
+{
 	Head()
 		: src(0)
 		, dst(0)
@@ -30,6 +31,13 @@ struct Head {
 	uint32_t type;
 	uint32_t size;
 } __attribute__((packed));
+
+struct Message
+{
+	Head head;
+	uint32_t size;
+	uint8_t * buf;
+};
 
 void hton(struct Head &);
 void ntoh(struct Head &);

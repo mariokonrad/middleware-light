@@ -1,8 +1,6 @@
 #include <LocalSocketStream.hpp>
 #include <sys/socket.h>
 
-#include <iostream> // TODO:TEMP
-
 LocalSocketStream::LocalSocketStream()
 {}
 
@@ -24,9 +22,10 @@ void LocalSocketStream::init(const std::string & path, struct sockaddr_un & addr
 	this->addr = addr;
 }
 
-int LocalSocketStream::init(int fd)
+int LocalSocketStream::init(int fd, Server * root_server)
 {
 	close();
+	this->root_server = root_server;
 	this->fd = fd;
 	this->path = "";
 	memset(&this->addr, 0, sizeof(this->addr));

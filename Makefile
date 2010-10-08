@@ -34,13 +34,13 @@ clean :
 test.cpp test.hpp : interface test.interface
 	cat test.interface | ./interface
 
-client : test.o client.o LocalSocketStream.o Message.o
+client : test.o client.o LocalSocketStream.o Server.o Channel.o Message.o
 	$(CXX) -o $@ $^
 
-server : LocalSocketStream.o LocalSocketStreamServer.o Mutex.o Executor.o ThreadBase.o Selector.o test.o server.o Message.o
+server : LocalSocketStream.o LocalSocketStreamServer.o Server.o Channel.o Mutex.o Executor.o ThreadBase.o Selector.o test.o server.o Message.o
 	$(CXX) -o $@ $^ -lpthread
 
-module : LocalSocketStream.o LocalSocketStreamServer.o Pipe.o Mutex.o ConditionVar.o Executor.o Thread.o ThreadBase.o Selector.o ModuleServer.o test.o module.o Message.o
+module : LocalSocketStream.o LocalSocketStreamServer.o Pipe.o Mutex.o ConditionVar.o Executor.o Thread.o ThreadBase.o Selector.o Server.o Channel.o ModuleBase.o ModuleServer.o test.o module.o Message.o
 	$(CXX) -o $@ $^ -lpthread
 
 %.o : %.c

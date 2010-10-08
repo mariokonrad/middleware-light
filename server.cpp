@@ -8,23 +8,19 @@
 #include <Message.hpp>
 #include <test.hpp> // generated
 
-typedef std::auto_ptr<LocalSocketStream> LocalSocketStreamPtr;
-
 class Client : public Runnable
 {
 	private:
-		LocalSocketStreamPtr conn;
+		Channel * conn;
 		int cnt;
 	public:
-		Client(LocalSocketStreamPtr conn)
+		Client(Channel * conn)
 			: conn(conn)
 			, cnt(2)
 		{}
 
 		virtual ~Client()
-		{
-			conn.reset();
-		}
+		{}
 		
 		virtual bool terminate() const
 		{
@@ -33,7 +29,7 @@ class Client : public Runnable
 
 		virtual void run()
 		{
-			if (!conn.get()) return;
+			if (!conn) return;
 			int rc = -1;
 
 			rc = Selector::select(*conn);
@@ -120,8 +116,8 @@ int main(int, char **)
 		return -1;
 	}
 
-	LocalSocketStreamPtr conn(new LocalSocketStream);
-	rc = sock.accept(conn.get());
+	Channel * conn = sock.create_channel();
+	rc = sock.accept(conn);
 	if (rc < 0) {
 		std::cerr << "ERROR: cannot accept connection" << std::endl;
 		return -1;
@@ -130,6 +126,7 @@ int main(int, char **)
 	exec.execute(new Client(conn), true);
 //	exec.execute(NULL);
 	exec.join();
+	sock.dispose_channel(conn);
 
 	sock.close();
 	return 0;

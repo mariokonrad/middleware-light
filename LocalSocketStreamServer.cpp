@@ -41,9 +41,14 @@ int LocalSocketStreamServer::close()
 	return 0;
 }
 
-Channel * LocalSocketStreamServer::create()
+Channel * LocalSocketStreamServer::create_channel()
 {
 	return new LocalSocketStream;
+}
+
+void LocalSocketStreamServer::dispose_channel(Channel * channel)
+{
+	if (channel) delete channel;
 }
 
 int LocalSocketStreamServer::accept(Channel * ch)
@@ -56,7 +61,7 @@ int LocalSocketStreamServer::accept(Channel * ch)
 	socklen_t len = sizeof(addr);
 	int sock = ::accept(fd, reinterpret_cast<sockaddr *>(&addr), &len);
 	if (sock < 0) return -1;
-	lss->init(sock);
+	lss->init(sock, this);
 	lss->init(path, addr);
 	return 0;
 }
