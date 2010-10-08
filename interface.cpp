@@ -60,6 +60,7 @@ static void write_header()
 			}
 			if (body_size > max_body_size) max_body_size = body_size;
 		}
+		max_body_size += 8 - (max_body_size % 8); // 8 byte alignment
 		ofs << indent << "enum { MAX_BODY_SIZE = " << max_body_size << " };" << endl;
 		for (Model::Module::Messages::const_iterator message = module->msg.begin(); message != module->msg.end(); ++message) {
 			ofs << indent << "struct " << message->identifier << " {" << endl;
@@ -78,18 +79,6 @@ static void write_header()
 			ofs << indent << "int serialize(uint8_t *, const struct " << message->identifier << " &);" << endl;
 			ofs << indent << "int deserialize(struct " << message->identifier << " &, const uint8_t *);" << endl;
 		}
-
-		// skel interface
-		ofs << indent << "class ModuleSkelInterface" << endl;
-		ofs << indent << "{" << endl;
-		++indent;
-		ofs << indent << "public:" << endl;
-		++indent;
-		ofs << indent << "virtual ~ModuleSkelInterface() {}" << endl;
-		ofs << indent << "virtual int received(const Head &, const uint8_t *) = 0;";
-		--indent;
-		--indent;
-		ofs << indent << "};" << endl;
 
 		// interface
 		ofs << indent << "class ModuleInterface" << endl;

@@ -4,8 +4,8 @@
 #include <Runnable.hpp>
 #include <Mutex.hpp>
 #include <ConditionVar.hpp>
-#include <Selector.hpp>
-#include <Pipe.hpp>
+#include <ModuleSkelInterface.hpp>
+#include <ModuleServer.hpp>
 #include <list>
 #include <memory>
 #include <iostream>
@@ -14,151 +14,14 @@
 
 #define PING  do { std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << std::endl; } while (0)
 
-enum { MAX_BODY_SIZE = 2048 }; // TODO: better way to do this, do not use hardcoded max size
-
-class ModuleServer // {{{
-	: public Runnable
-{
-	private:
-		typedef std::list<Server *> ServerList;
-		typedef std::list<Channel *> ClientList;
-	private:
-		test::ModuleSkelInterface * module;
-		Selector selector;
-		ServerList servers;
-		ClientList clients;
-		bool do_terminate;
-		Pipe pipe;
-	private:
-		bool handle_pipe(Device *);
-		bool handle_server(Device *);
-		bool handle_channel(Device *);
-	protected:
-		virtual void run();
-		virtual bool terminate() const;
-	public:
-		ModuleServer(test::ModuleSkelInterface * = NULL);
-		virtual ~ModuleServer();
-		void add(Server *);
-		void stop();
-};
-
-ModuleServer::ModuleServer(test::ModuleSkelInterface * module)
-	: module(module)
-	, do_terminate(false)
-{
-	pipe.open();
-}
-
-ModuleServer::~ModuleServer()
-{
-	pipe.close();
-	while (clients.size()) {
-		delete clients.front();
-		clients.pop_front();
-	}
-}
-
-void ModuleServer::add(Server * server)
-{
-	servers.push_back(server);
-}
-
-void ModuleServer::stop()
-{
-	do_terminate = true;
-	pipe.write(0);
-}
-
-bool ModuleServer::handle_pipe(Device * device)
-{
-	Pipe * pipe = dynamic_cast<Pipe *>(device);
-	if (!pipe) return false;
-	uint32_t v;
-	pipe->read(v);
-	return true;
-}
-
-bool ModuleServer::handle_server(Device * device)
-{
-	Server * server = dynamic_cast<Server *>(device);
-	if (!server) return false;
-	Channel * channel = server->create();
-	int rc = server->accept(channel);
-	if (rc < 0) {
-		if (channel) delete channel;
-		std::cerr << "ERROR: cannot accept connection" << std::endl;
-		return true;
-	}
-	selector.add(channel);
-	clients.push_back(channel);
-	return true;
-}
-
-bool ModuleServer::handle_channel(Device * device)
-{
-	Channel * channel = dynamic_cast<Channel *>(device);
-	if (!channel) return false;
-	Head head;
-	uint8_t buf[MAX_BODY_SIZE];
-	int rc = channel->recv(head, buf, sizeof(buf));
-	if (rc < 0) {
-		std::cerr << "ERROR: cannot read head" << std::endl;
-		return true;
-	} else if (rc == 0) {
-		// client has been disconnected
-		selector.remove(device);
-		clients.erase(find(clients.begin(), clients.end(), channel));
-		delete channel;
-		return true;
-	} else {
-		if (module) {
-			rc = module->received(head, buf);
-			if (rc < 0) {
-				std::cerr << "ERROR: cannot handle message, discarding" << std::endl;
-				return true;
-			}
-		}
-	}
-	return true;
-}
-
-void ModuleServer::run()
-{
-	selector.add(&pipe);
-	for (ServerList::iterator i = servers.begin(); i != servers.end(); ++i) selector.add(*i);
-
-	while (!terminate()) {
-		Selector::Devices devices;
-		int rc = selector.select(devices);
-		if (terminate()) break;
-		if (rc < 0) {
-			std::cerr << "ERROR: wait on connection" << std::endl;
-			return;
-		}
-
-		for (Selector::Devices::iterator i = devices.begin(); i != devices.end(); ++i) {
-			Device * device = *i;
-			if (handle_pipe(device)) continue;
-			if (handle_server(device)) continue;
-			if (handle_channel(device)) continue;
-		}
-	}
-}
-
-bool ModuleServer::terminate() const
-{
-	return do_terminate;
-}
-
-// }}}
-
 class ModuleSkel // {{{
-	: virtual public test::ModuleSkelInterface
+	: virtual public ModuleSkelInterface
 	, virtual public Runnable
 {
 	private:
 		struct Entry {
+			Entry() {}
+
 			Entry(const Head & head, const uint8_t * buffer)
 				: head(head)
 			{
@@ -166,7 +29,7 @@ class ModuleSkel // {{{
 			}
 
 			Head head;
-			uint8_t buf[MAX_BODY_SIZE];
+			uint8_t buf[test::MAX_BODY_SIZE];
 		};
 		typedef std::list<Entry> Queue;
 	private:
@@ -181,7 +44,7 @@ class ModuleSkel // {{{
 		ModuleSkel(unsigned int);
 		virtual ~ModuleSkel();
 		virtual void run();
-		virtual int received(const Head &, const uint8_t *);
+		virtual int receive(Channel *);
 		void add(Server *);
 };
 
@@ -221,16 +84,22 @@ void ModuleSkel::run()
 	server_thread.join();
 }
 
-int ModuleSkel::received(const Head & head, const uint8_t * buf)
+int ModuleSkel::receive(Channel * channel)
 {
-	int rc = -1;
-	mtx.lock();
-	if (queue.size() < max_queue_size) {
-		rc = 0;
-		queue.push_back(Entry(head, buf));
-		non_empty.broadcast();
+	if (!channel) return -1;
+	Entry entry;
+	int rc = channel->recv(entry.head, entry.buf, sizeof(entry.buf));
+	if (rc > 0) {
+		bool failure = true;
+		mtx.lock();
+		if (queue.size() < max_queue_size) {
+			failure = false;
+			queue.push_back(entry);
+			non_empty.broadcast();
+		}
+		mtx.unlock();
+		if (failure) std::cerr << "ERROR: cannot handle message, discarding" << std::endl;
 	}
-	mtx.unlock();
 	return rc;
 }
 
