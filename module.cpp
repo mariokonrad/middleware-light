@@ -6,6 +6,8 @@
 
 #define PING  do { std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << std::endl; } while (0)
 
+// TODO: find other solution  for 'dispatch_message'
+
 class Module // {{{
 	: public mwl::ModuleBase
 	, virtual public test::ModuleInterface
