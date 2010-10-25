@@ -1,19 +1,19 @@
-#include <LocalSocketStream.hpp>
+#include <mwl/LocalSocketStream.hpp>
+#include <mwl/Message.hpp>
 #include <iostream>
-#include <Message.hpp>
 #include <test.hpp> // generated
 
 int main(int, char **)
 {
 	std::cout << "client started" << std::endl;
 
-	LocalSocketStream sock("/tmp/demo.sock");
+	mwl::LocalSocketStream sock("/tmp/demo.sock");
 	if (sock.open() < 0) {
 		perror("open");
 		return -1;
 	}
 
-	Head head;
+	mwl::Head head;
 	head.src = 0;
 	head.dst = 0;
 	head.type = test::A::TYPE;

@@ -6,49 +6,47 @@ CFLAGS=
 CXX=g++
 CXXFLAGS=-Wall -Wextra -ansi -pedantic -I. -ggdb
 
-all : interface client server module thread_test
+export INCLUDES=-I$(shell pwd)
 
-thread_test : thread_test.o ThreadBase.o Thread.o Executor.o
-	$(CXX) -o $@ $^ -lpthread
+all : interface libmwl.a client server module thread_test
 
-interface : interface.o model.o interface.tab.o lex.yy.o
-	$(CXX) -o $@ $^
+interface : tool/interface
 
-interface.o : interface.cpp interface.tab.c interface.tab.h
+tool/interface :
+	$(MAKE) -C tool interface
 
-interface.tab.o : interface.tab.c
+libmwl.a : mwl/libmwl.a
 
-interface.tab.c interface.tab.h : interface.y
-	bison -d -o $@ $<
-
-lex.yy.c lex.yy.h : interface.l
-	flex --header-file=lex.yy.h $^
-
-lex.yy.o : lex.yy.c interface.tab.h
-	$(CXX) -o $@ -c lex.yy.c $(CXXFLAGS)
+mwl/libmwl.a :
+	$(MAKE) -C mwl
 
 clean :
-	rm -f interface interface.tab.* lex.yy.* *.o test.cpp test.hpp client server module
+	rm -f *.o test.cpp test.hpp client server module
 	rm -f thread_test
+	$(MAKE) -C tool clean
+	$(MAKE) -C mwl clean
 
-test.cpp test.hpp : interface test.interface
-	cat test.interface | ./interface
+thread_test : thread_test.o mwl/libmwl.a
+	$(CXX) -o $@ thread_test.o -Lmwl -lmwl -lpthread
 
-client : test.o client.o LocalSocketStream.o Server.o Channel.o Message.o
-	$(CXX) -o $@ $^
+test.cpp test.hpp : tool/interface test.interface
+	cat test.interface | tool/interface
 
-server : LocalSocketStream.o LocalSocketStreamServer.o Server.o Channel.o Mutex.o Executor.o ThreadBase.o Selector.o test.o server.o Message.o
-	$(CXX) -o $@ $^ -lpthread
+client : test.o client.o mwl/libmwl.a
+	$(CXX) -o $@ test.o client.o -Lmwl -lmwl
 
-module : LocalSocketStream.o LocalSocketStreamServer.o Pipe.o Mutex.o ConditionVar.o Executor.o Thread.o ThreadBase.o Selector.o Server.o Channel.o ModuleBase.o ModuleServer.o test.o module.o Message.o
-	$(CXX) -o $@ $^ -lpthread
+server : test.o server.o mwl/libmwl.a
+	$(CXX) -o $@ test.o server.o -Lmwl -lmwl -lpthread
+
+module : test.o module.o mwl/libmwl.a
+	$(CXX) -o $@ test.o module.o -Lmwl -lmwl -lpthread
 
 %.o : %.c
-	$(CXX) -o $@ -c $< $(CXXFLAGS)
+	$(CXX) -o $@ -c $< $(CXXFLAGS) $(INCLUDES)
 
 %.o : %.cpp
-	$(CXX) -o $@ -c $< $(CXXFLAGS)
+	$(CXX) -o $@ -c $< $(CXXFLAGS) $(INCLUDES)
 
 %.o : %.cc
-	$(CXX) -o $@ -c $< $(CXXFLAGS)
+	$(CXX) -o $@ -c $< $(CXXFLAGS) $(INCLUDES)
 

@@ -1,20 +1,20 @@
-#include <LocalSocketStream.hpp>
-#include <LocalSocketStreamServer.hpp>
-#include <Runnable.hpp>
-#include <Executor.hpp>
-#include <Selector.hpp>
+#include <mwl/LocalSocketStream.hpp>
+#include <mwl/LocalSocketStreamServer.hpp>
+#include <mwl/Runnable.hpp>
+#include <mwl/Executor.hpp>
+#include <mwl/Selector.hpp>
+#include <mwl/Message.hpp>
 #include <iostream>
 #include <memory>
-#include <Message.hpp>
 #include <test.hpp> // generated
 
-class Client : public Runnable
+class Client : public mwl::Runnable
 {
 	private:
-		Channel * conn;
+		mwl::Channel * conn;
 		int cnt;
 	public:
-		Client(Channel * conn)
+		Client(mwl::Channel * conn)
 			: conn(conn)
 			, cnt(2)
 		{}
@@ -32,7 +32,7 @@ class Client : public Runnable
 			if (!conn) return;
 			int rc = -1;
 
-			rc = Selector::select(*conn);
+			rc = mwl::Selector::select(*conn);
 			if (rc < 0) {
 				std::cerr << "ERROR: rc=" << rc << std::endl;
 				perror("select");
@@ -40,7 +40,7 @@ class Client : public Runnable
 				return;
 			}
 
-			Head head;
+			mwl::Head head;
 			test::A msg;
 			uint8_t buf[sizeof(msg)];
 
@@ -99,24 +99,24 @@ int main(int, char **)
 	const char * sockname = "/tmp/demo.sock";
 	unlink(sockname);
 
-	LocalSocketStreamServer sock(sockname);
+	mwl::LocalSocketStreamServer sock(sockname);
 	if (sock.open() < 0) {
 		perror("open");
 		return -1;
 	}
 
 	int rc;
-	Executor exec;
+	mwl::Executor exec;
 	exec.start();
 
-	rc = Selector::select(sock);
+	rc = mwl::Selector::select(sock);
 	if (rc < 0) {
 		std::cerr << "ERROR: cannot accept connection" << std::endl;
 		perror("select");
 		return -1;
 	}
 
-	Channel * conn = sock.create_channel();
+	mwl::Channel * conn = sock.create_channel();
 	rc = sock.accept(conn);
 	if (rc < 0) {
 		std::cerr << "ERROR: cannot accept connection" << std::endl;

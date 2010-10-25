@@ -1,27 +1,27 @@
-#include <LocalSocketStream.hpp>
-#include <LocalSocketStreamServer.hpp>
-#include <ModuleBase.hpp>
+#include <mwl/LocalSocketStream.hpp>
+#include <mwl/LocalSocketStreamServer.hpp>
+#include <mwl/ModuleBase.hpp>
 #include <iostream>
 #include <test.hpp> // generated
 
 #define PING  do { std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << std::endl; } while (0)
 
 class Module // {{{
-	: public ModuleBase
+	: public mwl::ModuleBase
 	, virtual public test::ModuleInterface
 {
 	protected:
 		bool do_terminate;
 	protected:
-		virtual void recv(const Head &, const test::A &);
-		virtual void recv(const Head &, const test::B &);
-		virtual void recv(const Head &, const test::C &);
-		virtual void recv(const Head &, const test::D &);
-		virtual void recv(const Head &, const test::terminate &);
+		virtual void recv(const mwl::Head &, const test::A &);
+		virtual void recv(const mwl::Head &, const test::B &);
+		virtual void recv(const mwl::Head &, const test::C &);
+		virtual void recv(const mwl::Head &, const test::D &);
+		virtual void recv(const mwl::Head &, const test::terminate &);
 	protected:
-		virtual void dispatch_message(Message *);
-		virtual Message * create_message();
-		virtual void dispose_message(Message *);
+		virtual void dispatch_message(mwl::Message *);
+		virtual mwl::Message * create_message();
+		virtual void dispose_message(mwl::Message *);
 	public:
 		Module(const std::string &);
 		virtual ~Module();
@@ -33,9 +33,9 @@ Module::Module(const std::string & sockname)
 {
 	set_max_queue_size(64);
 	set_max_clients(0);
-	Server * socket = new LocalSocketStreamServer(sockname);
+	mwl::Server * socket = new mwl::LocalSocketStreamServer(sockname);
 	if (socket->open() < 0) {
-		Server::dispose(socket);
+		mwl::Server::dispose(socket);
 		std::cerr << "ERROR: cannot initialize local socket" << std::endl;
 		return;
 	} else {
@@ -51,47 +51,47 @@ bool Module::terminate() const
 	return do_terminate;
 }
 
-void Module::dispatch_message(Message * msg)
+void Module::dispatch_message(mwl::Message * msg)
 {
 	dispatch(msg->head, msg->buf);
 }
 
-Message * Module::create_message()
+mwl::Message * Module::create_message()
 {
-	Message * msg = new Message;
+	mwl::Message * msg = new mwl::Message;
 	msg->size = test::MAX_BODY_SIZE;
 	msg->buf = new uint8_t[test::MAX_BODY_SIZE];
 	return msg;
 }
 
-void Module::dispose_message(Message * msg)
+void Module::dispose_message(mwl::Message * msg)
 {
 	if (!msg) return;
 	delete [] msg->buf;
 	delete msg;
 }
 
-void Module::recv(const Head &, const test::A & m)
+void Module::recv(const mwl::Head &, const test::A & m)
 {
 	std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": { " << static_cast<int>(m.a) << " " << m.b << " " << m.c << " " << m.d << " }" << std::endl;
 }
 
-void Module::recv(const Head &, const test::B & m)
+void Module::recv(const mwl::Head &, const test::B & m)
 {
 	std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": { " << m.a << " " << m.b << " }" << std::endl;
 }
 
-void Module::recv(const Head &, const test::C &)
+void Module::recv(const mwl::Head &, const test::C &)
 {
 	std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << std::endl;
 }
 
-void Module::recv(const Head &, const test::D &)
+void Module::recv(const mwl::Head &, const test::D &)
 {
 	std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << std::endl;
 }
 
-void Module::recv(const Head &, const test::terminate &)
+void Module::recv(const mwl::Head &, const test::terminate &)
 {
 	std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << std::endl;
 	do_terminate = true;
@@ -111,7 +111,7 @@ int main(int argc, char ** argv)
 	std::string type(argv[1]);
 
 	if (type == "client") {
-		LocalSocketStream conn(SOCKNAME);
+		mwl::LocalSocketStream conn(SOCKNAME);
 		if (conn.open()) {
 			std::cerr << "cannot open connection to module" << std::endl;
 			return -1;

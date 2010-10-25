@@ -1,8 +1,8 @@
 #include <iostream>
-#include <Executor.hpp>
-#include <Runnable.hpp>
+#include <mwl/Executor.hpp>
+#include <mwl/Runnable.hpp>
 
-class Foo : public Runnable
+class Foo : public mwl::Runnable
 {
 	private:
 		std::string name;
@@ -38,7 +38,7 @@ int main(int, char **)
 	t1.join();
 */
 
-	Executor ex;
+	mwl::Executor ex;
 	ex.start();
 	ex.execute(&foo);
 	ex.execute(&bar);
