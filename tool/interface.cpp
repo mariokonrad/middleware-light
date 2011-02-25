@@ -2,14 +2,113 @@
 #include <interface.tab.h>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <map>
 #include <stdint.h>
+#include <getopt.h>
+
+static bool param_generate_dispatch_per_message_type = true;
+static bool param_help = false;
+static bool param_check = false;
+static bool param_generate_stub = true;
+static bool param_generate_factory = true;
+static bool param_generate_interface = true;
+static std::string input_file;
+static std::string output_name;
+
+static int parse_options(int argc, char ** argv)
+{
+	enum Parameter {
+		 PARAM_HELP = 500
+		,PARAM_CHECK
+		,PARAM_OUTPUT_NAME
+		,PARAM_DISPATCH_PER_MESSAGE
+		,PARAM_GEN_STUB
+		,PARAM_GEN_FACTORY
+		,PARAM_GEN_INTERFACE
+	};
+
+	static const char * OPTIONS = "";
+	static const struct option LONG_OPTIONS[] = {
+		{ "help",             no_argument,       NULL, PARAM_HELP                 },
+		{ "check",            no_argument,       NULL, PARAM_CHECK                },
+		{ "output",           required_argument, NULL, PARAM_OUTPUT_NAME          },
+		{ "dispatch-per-msg", required_argument, NULL, PARAM_DISPATCH_PER_MESSAGE },
+		{ "gen-stub",         required_argument, NULL, PARAM_GEN_STUB             },
+		{ "gen-factory",      required_argument, NULL, PARAM_GEN_FACTORY          },
+		{ "gen-interface",    required_argument, NULL, PARAM_GEN_INTERFACE        },
+		{ NULL,               no_argument,       NULL, 0                          },
+	};
+	for (optind = 1; optind < argc; ) {
+		int index = -1;
+		if (getopt_long(argc, argv, OPTIONS, LONG_OPTIONS, &index) < 0) break;
+		if (index < 0) return -1;
+		const struct option * opt = static_cast<const struct option *>(&LONG_OPTIONS[index]);
+		switch (static_cast<Parameter>(opt->val)) {
+			case PARAM_HELP:
+				param_help = true;
+				break;
+			case PARAM_CHECK:
+				param_check = true;
+				break;
+			case PARAM_OUTPUT_NAME:
+				output_name = optarg;
+				break;
+			case PARAM_DISPATCH_PER_MESSAGE:
+				std::istringstream(optarg) >> param_generate_dispatch_per_message_type;
+				break;
+			case PARAM_GEN_STUB:
+				std::istringstream(optarg) >> param_generate_stub;
+				break;
+			case PARAM_GEN_FACTORY:
+				std::istringstream(optarg) >> param_generate_factory;
+				break;
+			case PARAM_GEN_INTERFACE:
+				std::istringstream(optarg) >> param_generate_interface;
+				break;
+		}
+	}
+
+	if (optind == argc) {
+		// input to be read from stdin
+	} else if (optind == argc - 1) {
+		input_file = argv[optind];
+	} else {
+		std::cerr << std::endl << argv[0] << ": error: unknown parameters specified" << std::endl;
+		return -1;
+	}
+	return 0;
+}
+
+static void usage(const char * name)
+{
+	using std::endl;
+
+	std::cout
+		<< endl
+		<< "usage: " << name << " [options] input-file" << endl
+		<< endl
+		<< "Options:" << endl
+		<< "\t" << "--help                     : this help" << endl
+		<< "\t" << "--check                    : do not generate anything, just check the input." << endl
+		<< "\t" << "                             in this case, no output name is needed" << endl
+		<< "\t" << "--output=name              : file prefix for the output files (header, definition)" << endl
+		<< "\t" << "--dispatch_per_msg=flag    : enable (1) or disable (0) the generation" << endl
+		<< "\t" << "                             of individual receive methods per message." << endl
+		<< "\t" << "                             default: 1" << endl
+		<< "\t" << "--gen-stub=flag            : enable (1) or disable (0) the generation" << endl
+		<< "\t" << "                             of the stub. default: 1" << endl
+		<< "\t" << "--gen-factory=flag         : enable (1) or disable (0) the generation" << endl
+		<< "\t" << "                             of the default factory. default: 1" << endl
+		<< "\t" << "--gen-interface=flag       : enable (1) or disable (0) the generation" << endl
+		<< "\t" << "                             of the module interface. default: 1" << endl
+		<< endl;
+}
 
 extern int yyparse();
 
 Model model;
 
-static bool generate_dispatch_per_message_type = true;
 
 struct TypeInfo {
 	TypeInfo() {}
@@ -65,8 +164,8 @@ static void write_header_interface(std::ostream & ofs, Indent & indent, const Mo
 	ofs << indent << "class ModuleInterface" << endl;
 	ofs << indent << "{" << endl;
 
-	if (generate_dispatch_per_message_type) {
-		++indent;
+	++indent;
+	if (param_generate_dispatch_per_message_type) {
 		ofs << indent << "protected:" << endl;
 		++indent;
 		for (Model::Module::Messages::const_iterator message = module.msg.begin(); message != module.msg.end(); ++message) {
@@ -166,19 +265,19 @@ static void write_header_module(std::ostream & ofs, Indent & indent, const Model
 		ofs << indent << "int deserialize(struct " << message->identifier << " &, const uint8_t *);" << endl;
 	}
 
-	write_header_message_factory(ofs, indent, module);
-	write_header_interface(ofs, indent, module);
-	write_header_stub(ofs, indent, module);
+	if (param_generate_factory) write_header_message_factory(ofs, indent, module);
+	if (param_generate_interface) write_header_interface(ofs, indent, module);
+	if (param_generate_stub) write_header_stub(ofs, indent, module);
 
 	--indent;
 	ofs << indent << "}" << endl;
 } // }}}
 
-static void write_header() // {{{
+static void write_header(const std::string & fn) // {{{
 {
 	using std::endl;
 
-	std::ofstream ofs("test.hpp");
+	std::ofstream ofs(fn.c_str());
 	Indent indent;
 	ofs << indent << "#include <stdint.h>" << endl;
 	ofs << indent << "#include <mwl/Message.hpp>" << endl;
@@ -363,28 +462,65 @@ static void write_source_module(std::ostream & ofs, Indent & indent, const Model
 		write_source_message(ofs, indent, *message);
 	}
 
-	write_source_interface_dispatch(ofs, indent, module);
-	write_source_message_factory(ofs, indent, module);
+	if (param_generate_interface) write_source_interface_dispatch(ofs, indent, module);
+	if (param_generate_factory) write_source_message_factory(ofs, indent, module);
 
 	ofs << indent << "}" << endl;
 } // }}}
 
-static void write_source() // {{{
+static void write_source(const std::string & fn, const std::string & fn_header) // {{{
 {
 	using std::endl;
-	std::ofstream ofs("test.cpp");
+	std::ofstream ofs(fn.c_str());
 	Indent indent;
 	ofs << indent << "#include <cstring>" << endl;
 	ofs << indent << "#include <mwl/endian.hpp>" << endl;
-	ofs << indent << "#include <test.hpp>" << endl;
+	ofs << indent << "#include <" << fn_header << ">" << endl;
 	for (Model::Modules::const_iterator module = model.modules.begin(); module != model.modules.end(); ++module) {
 		write_source_module(ofs, indent, *module);
 	}
 } // }}}
 
-int main(int, char **)
+int main(int argc, char ** argv)
 {
+	FILE * old_stdin = NULL;
+	FILE * file = NULL;
+
+	if (parse_options(argc, argv) < 0) {
+		usage(argv[0]);
+		return -1;
+	}
+
+	if (param_help) {
+		usage(argv[0]);
+		return 0;
+	}
+
+	if (output_name.empty() && !param_check) {
+		std::cerr << argv[0] << ": error: no output name specified." << std::endl;
+		usage(argv[0]);
+		return -1;
+	}
+
+	if (input_file.size()) {
+		file = fopen(input_file.c_str(), "rt");
+		if (file == NULL) {
+			std::cerr << argv[0] << ": error: cannot open file '" << input_file << "'" << std::endl;
+			return -1;
+		}
+		old_stdin = stdin;
+		stdin = file;
+	}
+
 	yyparse();
+
+	if (file) {
+		stdin = old_stdin;
+		fclose(file);
+		file = NULL;
+	}
+
+	if (param_check) return 0;
 
 	types[INT8]   = TypeInfo("int8_t",   sizeof(int8_t));
 	types[INT16]  = TypeInfo("int16_t",  sizeof(int16_t));
@@ -400,8 +536,8 @@ int main(int, char **)
 
 	// TODO: seriailze/deserialize buffer: derived from std::streambuf / std::basic_streambuf<...>
 
-	write_header();
-	write_source();
+	write_header(output_name + ".hpp");
+	write_source(output_name + ".cpp", output_name + ".hpp");
 	return 0;
 }
 

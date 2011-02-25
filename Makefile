@@ -30,7 +30,7 @@ thread_test : thread_test.o mwl/libmwl.a
 	$(CXX) -o $@ thread_test.o -Lmwl -lmwl -lpthread
 
 test.cpp test.hpp : tool/interface test.interface
-	cat test.interface | tool/interface
+	tool/interface --output=test test.interface
 
 client : test.o client.o mwl/libmwl.a
 	$(CXX) -o $@ test.o client.o -Lmwl -lmwl

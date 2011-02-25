@@ -30,7 +30,7 @@ class Module // {{{
 };
 
 Module::Module(const std::string & sockname)
-	: mwl::ModuleBase(new mwl::DefaultMessageFactory(test::MAX_BODY_SIZE))
+	: mwl::ModuleBase(new test::DefaultMessageFactory)
 	, do_terminate(false)
 {
 	set_max_queue_size(64);
