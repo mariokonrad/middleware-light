@@ -1,6 +1,7 @@
 #include <mwl/LocalSocketStream.hpp>
 #include <mwl/Message.hpp>
 #include <iostream>
+#include <cstdio>
 #include <test.hpp> // generated
 
 int main(int, char **)
@@ -12,6 +13,8 @@ int main(int, char **)
 		perror("open");
 		return -1;
 	}
+
+	// send message to server
 
 	mwl::Head head;
 	head.src = 0;
@@ -36,6 +39,24 @@ int main(int, char **)
 			perror("write");
 			return -1;
 		}
+	}
+
+	// let the server terminate
+
+	head.src = 0;
+	head.dst = 0;
+	head.type = test::terminate::TYPE;
+	head.size = sizeof(test::terminate);
+
+	test::terminate term;
+	test::hton(term);
+	uint8_t buf_term[sizeof(term)];
+	test::serialize(buf_term, term);
+	int rc = sock.send(head, buf_term, sizeof(buf_term));
+	if (rc < 0) {
+		std::cerr << "ERROR: rc=" << rc << std::endl;
+		perror("write");
+		return -1;
 	}
 
 	sock.close();

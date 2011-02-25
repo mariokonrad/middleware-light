@@ -6,6 +6,7 @@
 #include <mwl/Message.hpp>
 #include <iostream>
 #include <memory>
+#include <cstdio>
 #include <test.hpp> // generated
 
 class Client : public mwl::Runnable
@@ -24,6 +25,7 @@ class Client : public mwl::Runnable
 		
 		virtual bool terminate() const
 		{
+std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ":" << std::endl;
 			return cnt < 0;
 		}
 
@@ -41,15 +43,7 @@ class Client : public mwl::Runnable
 			}
 
 			mwl::Head head;
-			test::A msg;
-			uint8_t buf[sizeof(msg)];
-
-/*
-			rc = conn->recv(buf, sizeof(head));
-std::cerr << "rc=" << rc << std::endl;
-			rc = conn->recv(buf, sizeof(msg));
-std::cerr << "rc=" << rc << std::endl;
-*/
+			uint8_t buf[test::MAX_BODY_SIZE];
 
 			rc = conn->recv(head, buf, sizeof(buf));
 			if (rc == 0) {
@@ -68,27 +62,36 @@ std::cerr << "rc=" << rc << std::endl;
 				return;
 			}
 
-			test::deserialize(msg, buf);
-
-			test::ntoh(msg);
-
 			std::cout
 				<< "head:{"
 				<< " src=" << head.src
 				<< " dst=" << head.dst
 				<< " type=" << head.type
 				<< " size=" << head.size
-				<< " } "
-				<< "msg:{"
-				<< " a=" << static_cast<int>(msg.a)
-				<< " b=" << msg.b
-				<< " c=" << msg.c
-				<< " d=" << msg.d
-				<< " } "
-				<< " cnt=" << cnt
+				<< " }"
 				<< std::endl;
 
-			--cnt;
+			switch (head.type) {
+				case test::terminate::TYPE:
+					cnt = -1;
+					break;
+				case test::A::TYPE:
+					test::A msg;
+					test::deserialize(msg, buf);
+					test::ntoh(msg);
+					std::cout
+						<< "msg:{"
+						<< " a=" << static_cast<int>(msg.a)
+						<< " b=" << msg.b
+						<< " c=" << msg.c
+						<< " d=" << msg.d
+						<< " } "
+						<< " cnt=" << cnt
+						<< std::endl;
+					--cnt;
+					break;
+			}
+
 		}
 };
 

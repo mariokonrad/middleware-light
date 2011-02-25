@@ -3,6 +3,7 @@
 #include <mwl/Channel.hpp>
 #include <mwl/Server.hpp>
 #include <iostream>
+#include <algorithm>
 
 namespace mwl {
 
@@ -90,7 +91,7 @@ bool ModuleServer::handle_channel(Device * device)
 	} else if (rc == 0) {
 		// client has been disconnected
 		selector.remove(device);
-		clients.erase(find(clients.begin(), clients.end(), channel));
+		clients.erase(std::find(clients.begin(), clients.end(), channel));
 		Channel::dispose(channel);
 	}
 	return true;

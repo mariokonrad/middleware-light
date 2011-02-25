@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <stdint.h>
 
 extern int yyparse();
 
