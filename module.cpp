@@ -1,6 +1,7 @@
 #include <mwl/LocalSocketStream.hpp>
 #include <mwl/LocalSocketStreamServer.hpp>
 #include <mwl/ModuleBase.hpp>
+#include <mwl/DefaultMessageFactory.hpp>
 #include <iostream>
 #include <test.hpp> // generated
 
@@ -22,8 +23,6 @@ class Module // {{{
 		virtual void recv(const mwl::Head &, const test::terminate &);
 	protected:
 		virtual void dispatch_message(mwl::Message *);
-		virtual mwl::Message * create_message();
-		virtual void dispose_message(mwl::Message *);
 	public:
 		Module(const std::string &);
 		virtual ~Module();
@@ -31,7 +30,8 @@ class Module // {{{
 };
 
 Module::Module(const std::string & sockname)
-	: do_terminate(false)
+	: mwl::ModuleBase(new mwl::DefaultMessageFactory(test::MAX_BODY_SIZE))
+	, do_terminate(false)
 {
 	set_max_queue_size(64);
 	set_max_clients(0);
@@ -56,21 +56,6 @@ bool Module::terminate() const
 void Module::dispatch_message(mwl::Message * msg)
 {
 	dispatch(msg->head, msg->buf);
-}
-
-mwl::Message * Module::create_message()
-{
-	mwl::Message * msg = new mwl::Message;
-	msg->size = test::MAX_BODY_SIZE;
-	msg->buf = new uint8_t[test::MAX_BODY_SIZE];
-	return msg;
-}
-
-void Module::dispose_message(mwl::Message * msg)
-{
-	if (!msg) return;
-	delete [] msg->buf;
-	delete msg;
 }
 
 void Module::recv(const mwl::Head &, const test::A & m)

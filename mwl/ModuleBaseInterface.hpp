@@ -1,11 +1,9 @@
 #ifndef __MWL__MODULEBASEINTERFACE__HPP__
 #define __MWL__MODULEBASEINTERFACE__HPP__
 
-#include <stdint.h>
-#include <mwl/Message.hpp>
-#include <mwl/Channel.hpp>
-
 namespace mwl {
+
+class Channel;
 
 class ModuleBaseInterface
 {

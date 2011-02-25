@@ -14,6 +14,7 @@ OBJECTS=\
 	Channel.o \
 	ModuleBase.o \
 	ModuleServer.o \
+	DefaultMessageFactory.o \
 	Message.o
 
 CC=

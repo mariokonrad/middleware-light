@@ -11,6 +11,7 @@
 namespace mwl {
 
 class Message;
+class MessageFactory;
 class Server;
 class Channel;
 
@@ -26,14 +27,13 @@ class ModuleBase
 		Queue queue;
 		Mutex mtx;
 		ConditionVar non_empty;
+		MessageFactory * message_factory;
 	private:
 		virtual void dispatch_message(Message *) = 0;
-		virtual Message * create_message() = 0;
-		virtual void dispose_message(Message *) = 0;
 	protected:
 		void set_max_queue_size(unsigned int);
 	public:
-		ModuleBase();
+		ModuleBase(MessageFactory *);
 		virtual ~ModuleBase();
 		virtual void run();
 		virtual int receive(Channel *);
