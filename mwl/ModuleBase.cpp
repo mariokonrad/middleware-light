@@ -74,6 +74,10 @@ int ModuleBase::receive(Channel * channel)
 	if (!channel) return -1;
 	if (!message_factory) return -2;
 	Message * msg = message_factory->create_message();
+	if (!msg) {
+		std::cerr << "ERROR: cannot create message" << std::endl;
+		return -3;
+	}
 	int rc = channel->recv(msg->head, msg->buf, msg->size);
 	if (rc > 0) {
 		bool success = false;
