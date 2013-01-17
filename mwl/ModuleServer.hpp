@@ -5,6 +5,7 @@
 #include <mwl/Pipe.hpp>
 #include <mwl/Selector.hpp>
 #include <list>
+#include <cstdlib>
 
 namespace mwl {
 
