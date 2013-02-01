@@ -33,7 +33,7 @@ test.cpp test.hpp : tool/interface test.interface
 	tool/interface --output=test test.interface
 
 client : test.o client.o mwl/libmwl.a
-	$(CXX) -o $@ test.o client.o -Lmwl -lmwl
+	$(CXX) -o $@ test.o client.o -Lmwl -lmwl -lpthread
 
 server : test.o server.o mwl/libmwl.a
 	$(CXX) -o $@ test.o server.o -Lmwl -lmwl -lpthread

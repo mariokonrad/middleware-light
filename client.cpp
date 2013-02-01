@@ -45,10 +45,10 @@ int main(int, char **)
 
 	head.src = 0;
 	head.dst = 0;
-	head.type = test::terminate::TYPE;
-	head.size = sizeof(test::terminate);
+	head.type = test::shutdown::TYPE;
+	head.size = sizeof(test::shutdown);
 
-	test::terminate term;
+	test::shutdown term;
 	test::hton(term);
 	uint8_t buf_term[sizeof(term)];
 	test::serialize(buf_term, term);

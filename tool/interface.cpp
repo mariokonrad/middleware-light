@@ -161,7 +161,7 @@ static void write_header_interface(std::ostream & ofs, Indent & indent, const Mo
 {
 	using std::endl;
 
-	ofs << indent << "class ModuleInterface" << endl;
+	ofs << indent << "class ModuleInterface : public mwl::ModuleBase" << endl;
 	ofs << indent << "{" << endl;
 
 	++indent;
@@ -191,6 +191,7 @@ static void write_header_interface(std::ostream & ofs, Indent & indent, const Mo
 	}
 	ofs << indent << "public:" << endl;
 	++indent;
+		ofs << indent << "ModuleInterface(mwl::MessageFactory * factory) : mwl::ModuleBase(factory) {}" << endl;
 	ofs << indent << "virtual ~ModuleInterface() {}" << endl;
 	--indent;
 	--indent;
@@ -282,6 +283,7 @@ static void write_header(const std::string & fn) // {{{
 	ofs << indent << "#include <stdint.h>" << endl;
 	ofs << indent << "#include <mwl/Message.hpp>" << endl;
 	ofs << indent << "#include <mwl/MessageFactory.hpp>" << endl;
+	ofs << indent << "#include <mwl/ModuleBase.hpp>" << endl;
 	ofs << indent << "#include <mwl/Channel.hpp>" << endl;
 	for (Model::Modules::const_iterator module = model.modules.begin(); module != model.modules.end(); ++module) {
 		write_header_module(ofs, indent, *module);

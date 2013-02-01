@@ -25,5 +25,5 @@ module test
 		string<32> b[4]
 	}
 
-	message terminate <0xff> {}
+	message shutdown <0xff> {}
 }

@@ -57,7 +57,7 @@ void ModuleBase::run()
 		Message * msg = queue.front();
 		queue.pop_front();
 		mtx.unlock();
-		dispatch_message(msg);
+		dispatch(msg->head, msg->buf);
 		message_factory->dispose_message(msg);
 	}
 	server.stop();

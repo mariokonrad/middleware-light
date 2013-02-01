@@ -7,11 +7,8 @@
 
 #define PING  do { std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << std::endl; } while (0)
 
-// TODO: find other solution  for 'dispatch_message'
-
 class Module // {{{
-	: public mwl::ModuleBase
-	, virtual public test::ModuleInterface
+	: public test::ModuleInterface
 {
 	protected:
 		bool do_terminate;
@@ -20,9 +17,7 @@ class Module // {{{
 		virtual void recv(const mwl::Head &, const test::B &);
 		virtual void recv(const mwl::Head &, const test::C &);
 		virtual void recv(const mwl::Head &, const test::D &);
-		virtual void recv(const mwl::Head &, const test::terminate &);
-	protected:
-		virtual void dispatch_message(mwl::Message *);
+		virtual void recv(const mwl::Head &, const test::shutdown &);
 	public:
 		Module(const std::string &);
 		virtual ~Module();
@@ -30,7 +25,7 @@ class Module // {{{
 };
 
 Module::Module(const std::string & sockname)
-	: mwl::ModuleBase(new test::DefaultMessageFactory)
+	: ModuleInterface(new test::DefaultMessageFactory)
 	, do_terminate(false)
 {
 	set_max_queue_size(64);
@@ -53,11 +48,6 @@ bool Module::terminate() const
 	return do_terminate;
 }
 
-void Module::dispatch_message(mwl::Message * msg)
-{
-	dispatch(msg->head, msg->buf);
-}
-
 void Module::recv(const mwl::Head &, const test::A & m)
 {
 	std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << ": { " << static_cast<int>(m.a) << " " << m.b << " " << m.c << " " << m.d << " }" << std::endl;
@@ -78,7 +68,7 @@ void Module::recv(const mwl::Head &, const test::D &)
 	std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << std::endl;
 }
 
-void Module::recv(const mwl::Head &, const test::terminate &)
+void Module::recv(const mwl::Head &, const test::shutdown &)
 {
 	std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << std::endl;
 	do_terminate = true;
@@ -116,7 +106,7 @@ int main(int argc, char ** argv)
 		msg_b.a = 3.141f;
 		msg_b.b = 2.718;
 
-		test::terminate msg_term;
+		test::shutdown msg_term;
 
 		module.send(msg_a);
 		module.send(msg_b);

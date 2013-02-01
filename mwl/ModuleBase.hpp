@@ -11,6 +11,7 @@
 namespace mwl {
 
 class Message;
+struct Head;
 class MessageFactory;
 class Server;
 class Channel;
@@ -28,8 +29,8 @@ class ModuleBase
 		Mutex mtx;
 		ConditionVar non_empty;
 		MessageFactory * message_factory;
-	private:
-		virtual void dispatch_message(Message *) = 0;
+	protected:
+		virtual void dispatch(const mwl::Head &, const uint8_t *) = 0;
 	protected:
 		void set_max_queue_size(unsigned int);
 	public:

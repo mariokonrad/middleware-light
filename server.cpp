@@ -22,7 +22,7 @@ class Client : public mwl::Runnable
 
 		virtual ~Client()
 		{}
-		
+
 		virtual bool terminate() const
 		{
 std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ":" << std::endl;
@@ -72,7 +72,7 @@ std::cerr << __PRETTY_FUNCTION__ << ":" << __LINE__ << ":" << std::endl;
 				<< std::endl;
 
 			switch (head.type) {
-				case test::terminate::TYPE:
+				case test::shutdown::TYPE:
 					cnt = -1;
 					break;
 				case test::A::TYPE:
