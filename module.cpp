@@ -7,6 +7,8 @@
 
 #define PING  do { std::cout << __PRETTY_FUNCTION__ << ":" << __LINE__ << std::endl; } while (0)
 
+// TODO: move 'do_terminate' to the interface 'Runnable'
+
 class Module // {{{
 	: public test::ModuleInterface
 {
