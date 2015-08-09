@@ -7,6 +7,7 @@
 #include <iostream>
 #include <memory>
 #include <cstdio>
+#include <unistd.h>
 #include <test.hpp> // generated
 
 class Client : public mwl::Runnable
@@ -100,7 +101,7 @@ int main(int, char **)
 	std::cout << "server started" << std::endl;
 
 	const char * sockname = "/tmp/demo.sock";
-	unlink(sockname);
+	::unlink(sockname);
 
 	mwl::LocalSocketStreamServer sock(sockname);
 	if (sock.open() < 0) {

@@ -1,6 +1,7 @@
 #include <mwl/LocalSocketStreamServer.hpp>
 #include <mwl/LocalSocketStream.hpp>
 #include <sys/socket.h>
+#include <unistd.h>
 
 namespace mwl {
 

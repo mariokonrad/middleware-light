@@ -8,6 +8,8 @@ class Message;
 class MessageFactory
 {
 	public:
+		virtual ~MessageFactory() {};
+
 		virtual Message * create_message() = 0;
 		virtual void dispose_message(Message *) = 0;
 };
